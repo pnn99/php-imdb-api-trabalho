@@ -1,4 +1,0 @@
-vendor/*
-build/*
-src/cache/*
-.phpunit.result.cache
