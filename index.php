@@ -192,28 +192,72 @@
         let currentIndex = 0;
         let currentMovie = null; // Guarda o filme aberto no modal
 
+        const tvMazeUrl = 'https://api.tvmaze.com';
+
         // Inicializar favoritos do LocalStorage
         let favorites = JSON.parse(localStorage.getItem('netfilmes_favs')) || [];
 
         async function fetchMovies(query = '') {
-            const endpoint = query ?
+            const tmdbEndpoint = query ?
                 `${baseUrl}/search/movie?api_key=${apiKey}&query=${encodeURIComponent(query)}&language=pt-BR` :
                 `${baseUrl}/movie/popular?api_key=${apiKey}&language=pt-BR`;
 
             try {
-                const response = await fetch(endpoint);
+                const response = await fetch(tmdbEndpoint);
+                if (!response.ok) throw new Error('TMDb indisponível');
+
                 const data = await response.json();
                 displayMovies(data.results);
+                console.log('Fonte: TMDb');
+
             } catch (error) {
-                console.error(error);
+                console.warn('TMDb falhou, usando TVMaze...', error);
+                fetchFromTVMaze(query);
             }
         }
+
+        async function fetchFromTVMaze(query = '') {
+            const endpoint = query ?
+                `${tvMazeUrl}/search/shows?q=${encodeURIComponent(query)}` :
+                `${tvMazeUrl}/shows`;
+
+            try {
+                const response = await fetch(endpoint);
+                const data = await response.json();
+
+                // Normalização para o mesmo formato do TMDb
+                const movies = data.slice(0, 20).map(item => {
+                    const show = item.show || item;
+                    return {
+                        id: show.id,
+                        title: show.name,
+                        overview: show.summary ?
+                            show.summary.replace(/<[^>]+>/g, '') : 'Sem sinopse.',
+                        poster_path: show.image?.medium || null,
+                        vote_average: show.rating?.average || 0,
+                        release_date: show.premiered || '—',
+                        isFallback: true
+                    };
+                });
+
+                displayMovies(movies);
+                console.log('Fonte: TVMaze');
+
+            } catch (err) {
+                console.error('Fallback TVMaze também falhou', err);
+            }
+        }
+
 
         function displayMovies(movies) {
             const track = document.getElementById('carouselTrack');
             track.innerHTML = '';
             movies.forEach(movie => {
-                const poster = movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : 'https://placehold.co/400x600?text=Sem+Imagem';
+                const poster = movie.poster_path ?
+                    (movie.isFallback ?
+                        movie.poster_path :
+                        `https://image.tmdb.org/t/p/w500${movie.poster_path}`) :
+                    'https://placehold.co/400x600?text=Sem+Imagem';
                 track.innerHTML += `
                     <div class="card card-movie">
                         <img src="${poster}" class="card-img-top">
