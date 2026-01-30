@@ -33,20 +33,39 @@
             padding: 40px 0 20px 0;
         }
 
+        /* --- MELHORIA: CSS Scroll Snap --- */
         .carousel-track-container {
-            overflow: hidden;
+            display: flex;
+            overflow-x: auto; /* Permite rolagem nativa */
+            scroll-snap-type: x mandatory; /* Faz o card "travar" na posição correta */
+            gap: 15px;
+            padding-bottom: 20px;
             width: 95%;
             margin: 0 auto;
+            scroll-behavior: smooth; /* Rolagem suave via JS ou clique */
+        }
+        
+        /* Esconde a barra de rolagem (opcional, fica mais bonito) */
+        .carousel-track-container::-webkit-scrollbar {
+            height: 8px;
+        }
+        .carousel-track-container::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+        .carousel-track-container::-webkit-scrollbar-thumb {
+            background: var(--netflix-red);
+            border-radius: 4px;
         }
 
         .carousel-track {
             display: flex;
-            transition: transform 0.5s cubic-bezier(0.45, 0.05, 0.55, 0.95);
+            /* Removemos o transform manual do JS antigo */
         }
 
         .card-movie {
+            scroll-snap-align: start; /* Ponto de parada do scroll */
+            flex: 0 0 auto; /* Impede que o card encolha */
             min-width: 18rem;
-            margin: 0 10px;
             background-color: var(--dark-gray);
             border: 1px solid #333;
             color: white;
@@ -56,6 +75,7 @@
         .card-movie:hover {
             transform: translateY(-5px);
             border-color: var(--netflix-red);
+            z-index: 10;
         }
 
         .card-movie img {
@@ -67,7 +87,7 @@
             display: flex;
             justify-content: center;
             gap: 20px;
-            margin-top: 20px;
+            margin-top: 10px;
         }
 
         .btn-nav {
@@ -79,6 +99,14 @@
             border-radius: 50%;
             font-size: 1.5rem;
             cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+        
+        .btn-nav:hover {
+            background: #b20710;
         }
 
         .search-container {
@@ -141,7 +169,7 @@
 
     <div class="carousel-section">
         <h2 class="px-5 mb-4 text-danger">Destaques</h2>
-        <div class="carousel-track-container">
+        <div class="carousel-track-container" id="carouselContainer">
             <div class="carousel-track" id="carouselTrack"></div>
         </div>
         <div class="carousel-controls">
@@ -187,82 +215,61 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
-        const apiKey = 'c7fc658736c0c3cb216a06959a6dfc49';
-        const baseUrl = 'https://api.themoviedb.org/3';
-        let currentIndex = 0;
-        let currentMovie = null; // Guarda o filme aberto no modal
+        // --- MELHORIA: Segurança ---
+        // A chave de API foi removida daqui. Agora apontamos para nosso backend local.
+        const baseUrl = 'api.php'; 
+        
+        // Removemos o fallback do TVMaze para evitar confusão de dados (Séries vs Filmes)
+        // Se quiser reativar, precisará ajustar a lógica, mas para o trabalho, focar no TMDb via proxy é o ideal.
 
-        const tvMazeUrl = 'https://api.tvmaze.com';
-
+        let currentMovie = null; 
+        
         // Inicializar favoritos do LocalStorage
         let favorites = JSON.parse(localStorage.getItem('netfilmes_favs')) || [];
 
         async function fetchMovies(query = '') {
-            const tmdbEndpoint = query ?
-                `${baseUrl}/search/movie?api_key=${apiKey}&query=${encodeURIComponent(query)}&language=pt-BR` :
-                `${baseUrl}/movie/popular?api_key=${apiKey}&language=pt-BR`;
+            // Monta a URL para o nosso proxy PHP
+            const endpoint = query 
+                ? `?endpoint=search/movie&query=${encodeURIComponent(query)}` 
+                : `?endpoint=movie/popular`;
+
+            const targetUrl = `${baseUrl}${endpoint}`;
 
             try {
-                const response = await fetch(tmdbEndpoint);
-                if (!response.ok) throw new Error('TMDb indisponível');
+                const response = await fetch(targetUrl);
+                
+                if (!response.ok) {
+                    throw new Error('Erro ao comunicar com a API Local');
+                }
 
                 const data = await response.json();
-                displayMovies(data.results);
-                console.log('Fonte: TMDb');
+                
+                if (data.results && data.results.length > 0) {
+                    displayMovies(data.results);
+                } else {
+                    alert('Nenhum filme encontrado!');
+                }
 
             } catch (error) {
-                console.warn('TMDb falhou, usando TVMaze...', error);
-                fetchFromTVMaze(query);
+                console.error('Erro na busca:', error);
+                alert('Erro ao buscar filmes. Verifique se o api.php está configurado corretamente.');
             }
         }
-
-        async function fetchFromTVMaze(query = '') {
-            const endpoint = query ?
-                `${tvMazeUrl}/search/shows?q=${encodeURIComponent(query)}` :
-                `${tvMazeUrl}/shows`;
-
-            try {
-                const response = await fetch(endpoint);
-                const data = await response.json();
-
-                // Normalização para o mesmo formato do TMDb
-                const movies = data.slice(0, 20).map(item => {
-                    const show = item.show || item;
-                    return {
-                        id: show.id,
-                        title: show.name,
-                        overview: show.summary ?
-                            show.summary.replace(/<[^>]+>/g, '') : 'Sem sinopse.',
-                        poster_path: show.image?.medium || null,
-                        vote_average: show.rating?.average || 0,
-                        release_date: show.premiered || '—',
-                        isFallback: true
-                    };
-                });
-
-                displayMovies(movies);
-                console.log('Fonte: TVMaze');
-
-            } catch (err) {
-                console.error('Fallback TVMaze também falhou', err);
-            }
-        }
-
 
         function displayMovies(movies) {
             const track = document.getElementById('carouselTrack');
-            track.innerHTML = '';
+            track.innerHTML = ''; // Limpa conteúdo anterior
+            
             movies.forEach(movie => {
-                const poster = movie.poster_path ?
-                    (movie.isFallback ?
-                        movie.poster_path :
-                        `https://image.tmdb.org/t/p/w500${movie.poster_path}`) :
-                    'https://placehold.co/400x600?text=Sem+Imagem';
+                const poster = movie.poster_path 
+                    ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` 
+                    : 'https://placehold.co/400x600?text=Sem+Imagem';
+                
                 track.innerHTML += `
                     <div class="card card-movie">
-                        <img src="${poster}" class="card-img-top">
+                        <img src="${poster}" class="card-img-top" alt="${movie.title}">
                         <div class="card-body d-flex flex-column">
-                            <h5 class="card-title text-truncate">${movie.title}</h5>
+                            <h5 class="card-title text-truncate" title="${movie.title}">${movie.title}</h5>
                             <button class="btn btn-danger btn-sm mt-auto" onclick="showMovieDetails(${movie.id})">Ver Detalhes</button>
                         </div>
                     </div>`;
@@ -270,22 +277,37 @@
         }
 
         async function showMovieDetails(movieId) {
-            const response = await fetch(`${baseUrl}/movie/${movieId}?api_key=${apiKey}&language=pt-BR`);
-            currentMovie = await response.json();
+            try {
+                // Chama o proxy passando o ID do filme
+                const response = await fetch(`${baseUrl}?endpoint=movie/${movieId}`);
+                if (!response.ok) throw new Error('Erro ao carregar detalhes');
 
-            document.getElementById('modalTitle').innerText = currentMovie.title;
-            document.getElementById('modalOverview').innerText = currentMovie.overview || "Sem sinopse.";
-            document.getElementById('modalRating').innerText = currentMovie.vote_average.toFixed(1);
-            document.getElementById('modalDate').innerText = currentMovie.release_date;
-            document.getElementById('modalPoster').src = `https://image.tmdb.org/t/p/w500${currentMovie.poster_path}`;
+                currentMovie = await response.json();
 
-            // Ajustar texto do botão de favorito
+                document.getElementById('modalTitle').innerText = currentMovie.title;
+                document.getElementById('modalOverview').innerText = currentMovie.overview || "Sem sinopse.";
+                document.getElementById('modalRating').innerText = currentMovie.vote_average.toFixed(1);
+                document.getElementById('modalDate').innerText = currentMovie.release_date;
+                
+                const poster = currentMovie.poster_path 
+                    ? `https://image.tmdb.org/t/p/w500${currentMovie.poster_path}`
+                    : 'https://placehold.co/400x600?text=Sem+Imagem';
+                document.getElementById('modalPoster').src = poster;
+
+                updateFavoriteButton();
+                new bootstrap.Modal(document.getElementById('movieModal')).show();
+            } catch (error) {
+                console.error(error);
+                alert('Não foi possível carregar os detalhes do filme.');
+            }
+        }
+
+        function updateFavoriteButton() {
             const isFav = favorites.some(f => f.id === currentMovie.id);
             const btn = document.getElementById('btnFav');
             btn.innerText = isFav ? 'Remover Favorito' : 'Favoritar ★';
+            btn.className = isFav ? 'btn btn-warning btn-sm' : 'btn btn-outline-warning btn-sm';
             btn.onclick = toggleFavorite;
-
-            new bootstrap.Modal(document.getElementById('movieModal')).show();
         }
 
         function toggleFavorite() {
@@ -301,10 +323,7 @@
             }
             localStorage.setItem('netfilmes_favs', JSON.stringify(favorites));
             renderFavorites();
-
-            // Atualiza botão do modal
-            const isFav = favorites.some(f => f.id === currentMovie.id);
-            document.getElementById('btnFav').innerText = isFav ? 'Remover Favorito' : 'Favoritar ★';
+            updateFavoriteButton();
         }
 
         function renderFavorites() {
@@ -319,9 +338,13 @@
             section.style.display = 'block';
             container.innerHTML = '';
             favorites.forEach(movie => {
+                const poster = movie.poster_path 
+                    ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` 
+                    : 'https://placehold.co/400x600?text=Sem+Imagem';
+
                 container.innerHTML += `
                     <div class="card card-movie card-fav">
-                        <img src="https://image.tmdb.org/t/p/w500${movie.poster_path}" class="card-img-top">
+                        <img src="${poster}" class="card-img-top">
                         <div class="card-body">
                             <h6 class="text-truncate">${movie.title}</h6>
                             <button class="btn btn-outline-danger btn-sm w-100" onclick="showMovieDetails(${movie.id})">Ver</button>
@@ -335,28 +358,28 @@
             if (term.trim()) fetchMovies(term);
         }
 
-        // Carrossel
+        // --- MELHORIA: Navegação do Carrossel com Scroll ---
         function moveCarousel(direction) {
-            const track = document.getElementById('carouselTrack');
-            const cards = document.querySelectorAll('#carouselTrack .card-movie');
-            if (!cards.length) return;
-            const cardWidth = cards[0].offsetWidth + 20;
-            const visibleWidth = document.querySelector('.carousel-track-container').offsetWidth;
-            const maxScroll = track.scrollWidth - visibleWidth;
+            const container = document.getElementById('carouselContainer');
+            // Rola 70% da largura visível
+            const scrollAmount = container.clientWidth * 0.7;
 
             if (direction === 'next') {
-                currentIndex += cardWidth;
-                if (currentIndex > maxScroll) currentIndex = 0;
+                container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
             } else {
-                currentIndex -= cardWidth;
-                if (currentIndex < 0) currentIndex = maxScroll;
+                container.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
             }
-            track.style.transform = `translateX(${-currentIndex}px)`;
         }
 
         document.getElementById('nextBtn').addEventListener('click', () => moveCarousel('next'));
         document.getElementById('prevBtn').addEventListener('click', () => moveCarousel('prev'));
+        
+        // Permite pesquisar ao pressionar Enter
+        document.getElementById('searchInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') searchMovie();
+        });
 
+        // Carregamento inicial
         fetchMovies();
         renderFavorites();
     </script>
