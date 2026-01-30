@@ -17,6 +17,9 @@
             color: white;
             font-family: 'Arial', sans-serif;
             overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
         }
 
         .banner {
@@ -29,23 +32,18 @@
             justify-content: center;
         }
 
-        .carousel-section {
-            padding: 40px 0 20px 0;
-        }
-
         /* --- MELHORIA: CSS Scroll Snap --- */
         .carousel-track-container {
             display: flex;
-            overflow-x: auto; /* Permite rolagem nativa */
-            scroll-snap-type: x mandatory; /* Faz o card "travar" na posição correta */
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
             gap: 15px;
             padding-bottom: 20px;
             width: 95%;
             margin: 0 auto;
-            scroll-behavior: smooth; /* Rolagem suave via JS ou clique */
+            scroll-behavior: smooth;
         }
         
-        /* Esconde a barra de rolagem (opcional, fica mais bonito) */
         .carousel-track-container::-webkit-scrollbar {
             height: 8px;
         }
@@ -59,12 +57,11 @@
 
         .carousel-track {
             display: flex;
-            /* Removemos o transform manual do JS antigo */
         }
 
         .card-movie {
-            scroll-snap-align: start; /* Ponto de parada do scroll */
-            flex: 0 0 auto; /* Impede que o card encolha */
+            scroll-snap-align: start;
+            flex: 0 0 auto;
             min-width: 18rem;
             background-color: var(--dark-gray);
             border: 1px solid #333;
@@ -148,6 +145,12 @@
             height: 250px;
             object-fit: cover;
         }
+
+        /* --- MELHORIA: Footer --- */
+        footer {
+            margin-top: auto; /* Empurra o footer para o final da página */
+            background-color: #000;
+        }
     </style>
 </head>
 
@@ -159,19 +162,40 @@
 
     <div class="search-container">
         <h3 class="text-center mb-3">Pesquise seu filme favorito</h3>
-        <div class="input-group">
+        <div class="input-group mb-4">
             <input type="text" id="searchInput" class="form-control search-input" placeholder="Digite o nome...">
             <button class="btn btn-danger" onclick="searchMovie()">Pesquisar</button>
+        </div>
+
+        <div class="d-flex justify-content-center gap-2 flex-wrap">
+            <button class="btn btn-outline-light btn-sm rounded-pill px-3" onclick="fetchMovies()">
+                🔥 Populares
+            </button>
+            <button class="btn btn-outline-warning btn-sm rounded-pill px-3" onclick="fetchCategory('movie/top_rated', '⭐ Melhores Avaliados')">
+                ⭐ Melhores Avaliados
+            </button>
+            <button class="btn btn-outline-info btn-sm rounded-pill px-3" onclick="fetchCategory('movie/upcoming', '📅 Lançamentos em Breve')">
+                📅 Em Breve
+            </button>
         </div>
     </div>
 
     <hr class="border-secondary mx-5">
 
     <div class="carousel-section">
-        <h2 class="px-5 mb-4 text-danger">Destaques</h2>
+        <h2 class="px-5 mb-4 text-danger" id="sectionTitle">Destaques</h2>
+        
+        <div id="loadingSpinner" class="text-center my-5 d-none">
+            <div class="spinner-border text-danger" role="status" style="width: 3rem; height: 3rem;">
+                <span class="visually-hidden">Carregando...</span>
+            </div>
+            <p class="text-secondary mt-2">Buscando filmes...</p>
+        </div>
+
         <div class="carousel-track-container" id="carouselContainer">
             <div class="carousel-track" id="carouselTrack"></div>
         </div>
+        
         <div class="carousel-controls">
             <button class="btn-nav" id="prevBtn">❮</button>
             <button class="btn-nav" id="nextBtn">❯</button>
@@ -182,6 +206,25 @@
         <h2 class="mb-4 text-warning">Meus Favoritos ★</h2>
         <div class="fav-grid" id="favoritesContainer"></div>
     </section>
+
+    <footer class="py-4 border-top border-secondary text-center text-secondary">
+        <div class="container">
+            <p class="mb-1 text-light">Desenvolvido por <strong>Paulo Nogueira do Nascimento</strong></p>
+            <p class="small mb-3">Sistemas de Informação - IFMG Sabará</p>
+            
+            <div class="d-flex justify-content-center mb-3">
+                <a href="https://github.com/seu-usuario/php-imdb-api-trabalho" target="_blank" class="btn btn-outline-light btn-sm d-flex align-items-center gap-2">
+                    <svg height="20" width="20" viewBox="0 0 16 16" fill="white"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>
+                    Ver código no GitHub
+                </a>
+            </div>
+            
+            <p class="mb-0" style="font-size: 0.75rem; opacity: 0.5;">
+                Dados fornecidos por <a href="https://www.themoviedb.org/" target="_blank" class="text-secondary">TMDb</a>. 
+                Este projeto acadêmico usa a API do TMDb mas não é certificado por eles.
+            </p>
+        </div>
+    </footer>
 
     <div class="modal fade" id="movieModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -215,33 +258,42 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
-        // --- MELHORIA: Segurança ---
-        // A chave de API foi removida daqui. Agora apontamos para nosso backend local.
         const baseUrl = 'api.php'; 
-        
-        // Removemos o fallback do TVMaze para evitar confusão de dados (Séries vs Filmes)
-        // Se quiser reativar, precisará ajustar a lógica, mas para o trabalho, focar no TMDb via proxy é o ideal.
-
         let currentMovie = null; 
-        
-        // Inicializar favoritos do LocalStorage
         let favorites = JSON.parse(localStorage.getItem('netfilmes_favs')) || [];
 
+        // Função Genérica para carregar dados (Usada pela busca e pelos filtros)
         async function fetchMovies(query = '') {
-            // Monta a URL para o nosso proxy PHP
+            // Atualiza Título para padrão se for busca
+            if(query) document.getElementById('sectionTitle').innerText = `Resultados para: "${query}"`;
+            else document.getElementById('sectionTitle').innerText = 'Destaques';
+
             const endpoint = query 
                 ? `?endpoint=search/movie&query=${encodeURIComponent(query)}` 
                 : `?endpoint=movie/popular`;
 
-            const targetUrl = `${baseUrl}${endpoint}`;
+            loadData(endpoint);
+        }
+
+        // --- MELHORIA: Função específica para categorias (Filtros) ---
+        function fetchCategory(categoryEndpoint, title) {
+            document.getElementById('searchInput').value = ''; // Limpa busca
+            document.getElementById('sectionTitle').innerText = title; // Atualiza título (ex: Em Breve)
+            
+            // Chama a função principal passando o endpoint da categoria
+            loadData(`?endpoint=${categoryEndpoint}`);
+        }
+
+        // Função central que faz a requisição e gerencia o SPINNER
+        async function loadData(queryString) {
+            // 1. UI: Mostra Spinner, Esconde Carrossel
+            document.getElementById('loadingSpinner').classList.remove('d-none');
+            document.getElementById('carouselContainer').classList.add('d-none');
 
             try {
-                const response = await fetch(targetUrl);
+                const response = await fetch(`${baseUrl}${queryString}`);
                 
-                if (!response.ok) {
-                    throw new Error('Erro ao comunicar com a API Local');
-                }
-
+                if (!response.ok) throw new Error('Erro na API Local');
                 const data = await response.json();
                 
                 if (data.results && data.results.length > 0) {
@@ -251,14 +303,17 @@
                 }
 
             } catch (error) {
-                console.error('Erro na busca:', error);
-                alert('Erro ao buscar filmes. Verifique se o api.php está configurado corretamente.');
+                console.error('Erro:', error);
+            } finally {
+                // 2. UI: Esconde Spinner, Mostra Carrossel (independente de erro)
+                document.getElementById('loadingSpinner').classList.add('d-none');
+                document.getElementById('carouselContainer').classList.remove('d-none');
             }
         }
 
         function displayMovies(movies) {
             const track = document.getElementById('carouselTrack');
-            track.innerHTML = ''; // Limpa conteúdo anterior
+            track.innerHTML = ''; 
             
             movies.forEach(movie => {
                 const poster = movie.poster_path 
@@ -278,7 +333,6 @@
 
         async function showMovieDetails(movieId) {
             try {
-                // Chama o proxy passando o ID do filme
                 const response = await fetch(`${baseUrl}?endpoint=movie/${movieId}`);
                 if (!response.ok) throw new Error('Erro ao carregar detalhes');
 
@@ -298,7 +352,7 @@
                 new bootstrap.Modal(document.getElementById('movieModal')).show();
             } catch (error) {
                 console.error(error);
-                alert('Não foi possível carregar os detalhes do filme.');
+                alert('Não foi possível carregar os detalhes.');
             }
         }
 
@@ -358,10 +412,8 @@
             if (term.trim()) fetchMovies(term);
         }
 
-        // --- MELHORIA: Navegação do Carrossel com Scroll ---
         function moveCarousel(direction) {
             const container = document.getElementById('carouselContainer');
-            // Rola 70% da largura visível
             const scrollAmount = container.clientWidth * 0.7;
 
             if (direction === 'next') {
@@ -374,12 +426,10 @@
         document.getElementById('nextBtn').addEventListener('click', () => moveCarousel('next'));
         document.getElementById('prevBtn').addEventListener('click', () => moveCarousel('prev'));
         
-        // Permite pesquisar ao pressionar Enter
         document.getElementById('searchInput').addEventListener('keypress', function (e) {
             if (e.key === 'Enter') searchMovie();
         });
 
-        // Carregamento inicial
         fetchMovies();
         renderFavorites();
     </script>
